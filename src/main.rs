@@ -6,17 +6,12 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use etcetera::base_strategy::BaseStrategy;
-use simplelog::{Config, LevelFilter};
 use std::{
-    fs::File,
     io::{self, Write},
     process::ExitCode,
     sync::mpsc,
     thread,
 };
-
-const PROJECT_NAME: &str = "grow";
 
 fn main() -> ExitCode {
     match run_application() {
@@ -31,8 +26,6 @@ fn main() -> ExitCode {
 }
 
 fn run_application() -> io::Result<()> {
-    setup_logging()?;
-
     let application: Application<Opened> = Application::open()?;
     let (command_sender, command_reciever) = mpsc::channel();
     thread::spawn(|| keyevent_handler::run_keyevent_loop(command_sender));
@@ -86,25 +79,4 @@ impl Application<Opened> {
 pub enum Commands {
     Close,
     Stub,
-}
-
-fn setup_logging() -> io::Result<()> {
-    let log_dir_path = etcetera::base_strategy::choose_base_strategy()
-        .unwrap()
-        .cache_dir()
-        .join(PROJECT_NAME);
-
-    if !log_dir_path.exists() {
-        std::fs::create_dir_all(&log_dir_path)?;
-    }
-
-    let log_file_path = log_dir_path.join(format!("{}.log", PROJECT_NAME));
-
-    simplelog::WriteLogger::init(
-        LevelFilter::Info,
-        Config::default(),
-        File::create(log_file_path).expect("Log directory existence has been checked."),
-    )
-    .expect("Logger setup only called once");
-    Ok(())
 }
