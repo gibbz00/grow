@@ -1,4 +1,5 @@
 // mod render;
+mod file_watcher;
 mod keyevent_handler;
 
 use crossterm::{
@@ -27,20 +28,22 @@ fn main() -> ExitCode {
 
 fn run_application() -> io::Result<()> {
     let application: Application<Opened> = Application::open()?;
-    let (command_sender, command_reciever) = mpsc::channel();
-    thread::spawn(|| keyevent_handler::run_keyevent_loop(command_sender));
+    let (cmd_sender_0, command_reciever) = mpsc::channel();
+    let cmd_sender_1 = cmd_sender_0.clone();
+    thread::spawn(|| keyevent_handler::run_keyevent_loop(cmd_sender_0));
+    thread::spawn(|| file_watcher::watch(cmd_sender_1));
     loop {
         match command_reciever
             .recv()
             .expect("Expected an open keyevent_handler thread.")
         {
-            Commands::Close => {
+            Command::Close => {
                 application.close()?;
                 break;
             }
-            // TEMP:
-            Commands::Stub => {
-                continue;
+            Command::Reload => {
+                // TEMP:
+                panic!("File updated :)")
             }
         }
     }
@@ -76,7 +79,7 @@ impl Application<Opened> {
     }
 }
 
-pub enum Commands {
+pub enum Command {
     Close,
-    Stub,
+    Reload,
 }

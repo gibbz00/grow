@@ -7,7 +7,7 @@ use tui::{
     text::{Span, Spans, Text},
 };
 
-pub fn format(markdown_str: &str) -> Text {
+fn format(markdown_str: &str) -> Text {
     Text::from(markdown_to_spans(markdown_str))
 }
 
