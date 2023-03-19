@@ -1,8 +1,6 @@
-use std::sync::mpsc::Sender;
-
-use crate::Command;
-use anyhow::anyhow;
+use crate::{thread_helpers::send_error_command, Command};
 use crossterm::event::{read, Event as CrosstermEvent, KeyCode, KeyModifiers};
+use std::sync::mpsc::Sender;
 
 pub fn keyevent_loop(cmd_sender: Sender<anyhow::Result<Command>>) {
     loop {
@@ -17,7 +15,7 @@ pub fn keyevent_loop(cmd_sender: Sender<anyhow::Result<Command>>) {
                     }
                 }
             }
-            Err(err) => cmd_sender.send(Err(anyhow!(err))).unwrap(),
+            Err(error) => send_error_command!(cmd_sender, error),
         }
     }
 }

@@ -1,8 +1,9 @@
 // mod render;
 mod file_watcher;
 mod keyevent_handler;
+mod thread_helpers;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
 use crossterm::{
     cursor::{Hide, Show},
     execute,
@@ -13,7 +14,7 @@ use keyevent_handler::keyevent_loop;
 use std::{
     io::{self, Write},
     process::ExitCode,
-    sync::mpsc,
+    sync::mpsc::{self, Sender},
     thread,
 };
 
@@ -29,23 +30,11 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_application() -> anyhow::Result<()> {
+fn run_application() -> Result<()> {
     let application: Application<Opened> = Application::open()?;
 
-    // TODO: close application on error.
-    let (cmd_sender_0, command_reciever) = mpsc::channel();
-    let cmd_sender_1 = cmd_sender_0.clone();
-    let found_thread_0 = thread::Builder::new()
-        .name("keyevent_handler".into())
-        .spawn(|| keyevent_loop(cmd_sender_0));
-    if let Err(error) = found_thread_0 {
-        application.close()?;
-        return Err(anyhow!(error));
-    }
-    let found_thread_1 = thread::Builder::new()
-        .name("file_watcher".into())
-        .spawn(|| file_watcher(cmd_sender_1));
-    if let Err(error) = found_thread_1 {
+    let (cmd_sender, command_reciever) = mpsc::channel();
+    if let Err(error) = spawn_threads(cmd_sender) {
         application.close()?;
         return Err(anyhow!(error));
     }
@@ -62,9 +51,9 @@ fn run_application() -> anyhow::Result<()> {
                     panic!("File updated :)")
                 }
             },
-            Err(err_msg) => {
+            Err(error) => {
                 application.close()?;
-                return Err(err_msg);
+                return Err(error);
             }
         }
     }
@@ -72,6 +61,28 @@ fn run_application() -> anyhow::Result<()> {
     // execute!(stdout, Print(markdown_string))?;
 
     Ok(())
+}
+
+fn spawn_threads(cmd_sender: Sender<Result<Command>>) -> Result<()> {
+    let cmd_sender_clone = cmd_sender.clone();
+    spawn_thread("keyevent_handler", cmd_sender, keyevent_loop)?;
+    spawn_thread("file_watcher", cmd_sender_clone, file_watcher)?;
+    Ok(())
+}
+
+fn spawn_thread<F>(
+    name: &str,
+    cmd_sender: Sender<Result<Command>>,
+    closure: F,
+) -> io::Result<thread::JoinHandle<()>>
+where
+    F: FnOnce(Sender<Result<Command>>) + Send + 'static,
+{
+    // Using builder as it returns error instead on spawn.
+    // thread::spawn() simply panics.
+    thread::Builder::new()
+        .name(name.into())
+        .spawn(|| closure(cmd_sender))
 }
 
 struct Application<State> {
