@@ -1,12 +1,15 @@
-use std::{fs, io, path::PathBuf};
-
+use anyhow::Result;
 use crossterm::{
-    cursor::{Hide, MoveTo, Show},
+    cursor::{Hide, MoveTo, MoveToNextLine, Show},
     execute,
     style::Print,
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen,
     },
+};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
 };
 
 pub struct Application<State> {
@@ -26,13 +29,10 @@ impl Application<Closed> {
 
 pub struct Opened;
 impl Application<Opened> {
-    pub fn render_file(&self, file_path: &PathBuf) -> anyhow::Result<()> {
-        execute!(
-            io::stdout(),
-            MoveTo(0, 0),
-            Clear(crossterm::terminal::ClearType::All),
-            Print(fs::read_to_string(file_path)?)
-        )?;
+    pub fn render_file(&self, file_path: &PathBuf) -> Result<()> {
+        execute!(io::stdout(), Clear(crossterm::terminal::ClearType::All))?;
+        render_tabline(file_path)?;
+        execute!(io::stdout(), Print(fs::read_to_string(file_path)?))?;
         Ok(())
     }
 
@@ -43,4 +43,14 @@ impl Application<Opened> {
             state: std::marker::PhantomData,
         })
     }
+}
+
+pub fn render_tabline(file_path: &Path) -> Result<()> {
+    execute!(
+        io::stdout(),
+        MoveTo(0, 0),
+        Print(file_path.to_string_lossy()),
+        MoveToNextLine(1)
+    )?;
+    Ok(())
 }
