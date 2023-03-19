@@ -1,9 +1,12 @@
-use std::io;
+use std::{fs, io, path::PathBuf};
 
 use crossterm::{
-    cursor::{Hide, Show},
+    cursor::{Hide, MoveTo, Show},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    style::Print,
+    terminal::{
+        disable_raw_mode, enable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen,
+    },
 };
 
 pub struct Application<State> {
@@ -23,6 +26,16 @@ impl Application<Closed> {
 
 pub struct Opened;
 impl Application<Opened> {
+    pub fn render_file(&self, file_path: &PathBuf) -> anyhow::Result<()> {
+        execute!(
+            io::stdout(),
+            MoveTo(0, 0),
+            Clear(crossterm::terminal::ClearType::All),
+            Print(fs::read_to_string(file_path)?)
+        )?;
+        Ok(())
+    }
+
     pub fn close(self) -> io::Result<Application<Closed>> {
         disable_raw_mode()?;
         execute!(io::stdout(), LeaveAlternateScreen, Show)?;

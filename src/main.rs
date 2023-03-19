@@ -8,14 +8,9 @@ mod thread_helpers;
 use anyhow::{anyhow, Result};
 use application::Application;
 use clap::Parser;
-use file_watcher::file_watcher;
+use file_watcher::filewatcher;
 use keyevent_handler::keyevent_loop;
-use std::{
-    fs::File,
-    io::Write,
-    process::ExitCode,
-    sync::mpsc::{self, Sender},
-};
+use std::{io::Write, process::ExitCode, sync::mpsc};
 
 fn main() -> ExitCode {
     match run_application() {
@@ -35,13 +30,12 @@ fn run_application() -> Result<()> {
     if args.file.is_dir() {
         return Err(anyhow!("Expected file, found directory: {:?}", args.file));
     }
-    let file = File::open(args.file)?;
 
-    // check file existence
     let application = Application::open()?;
+    application.render_file(&args.file)?;
 
     let (cmd_sender, command_reciever) = mpsc::channel();
-    let thread_closures: Vec<fn(Sender<Result<Command>>)> = vec![keyevent_loop, file_watcher];
+    let thread_closures = thread_closures!(keyevent_loop, filewatcher(args.file.clone()));
     if let Err(error) = thread_helpers::spawn_threads(cmd_sender, thread_closures) {
         application.close()?;
         return Err(anyhow!(error));
@@ -54,10 +48,7 @@ fn run_application() -> Result<()> {
                     application.close()?;
                     break;
                 }
-                Command::Reload => {
-                    // TEMP:
-                    panic!("File updated :)")
-                }
+                Command::Reload => application.render_file(&args.file)?,
             },
             Err(error) => {
                 application.close()?;
