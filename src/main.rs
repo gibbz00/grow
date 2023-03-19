@@ -1,14 +1,17 @@
 // mod render;
 mod application;
+mod args;
 mod file_watcher;
 mod keyevent_handler;
 mod thread_helpers;
 
 use anyhow::{anyhow, Result};
 use application::Application;
+use clap::Parser;
 use file_watcher::file_watcher;
 use keyevent_handler::keyevent_loop;
 use std::{
+    fs::File,
     io::Write,
     process::ExitCode,
     sync::mpsc::{self, Sender},
@@ -27,6 +30,14 @@ fn main() -> ExitCode {
 }
 
 fn run_application() -> Result<()> {
+    // parse args
+    let args = args::Args::parse();
+    if args.file.is_dir() {
+        return Err(anyhow!("Expected file, found directory: {:?}", args.file));
+    }
+    let file = File::open(args.file)?;
+
+    // check file existence
     let application = Application::open()?;
 
     let (cmd_sender, command_reciever) = mpsc::channel();
