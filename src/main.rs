@@ -5,7 +5,6 @@ mod keyevent_handler;
 mod thread_helpers;
 
 use anyhow::{anyhow, Result};
-
 use application::Application;
 use file_watcher::file_watcher;
 use keyevent_handler::keyevent_loop;
