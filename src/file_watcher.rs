@@ -1,20 +1,34 @@
-use std::{path::Path, sync::mpsc::Sender};
-
-use notify::Watcher;
-
 use crate::Command;
+use anyhow::anyhow;
+use notify::{RecommendedWatcher, Watcher};
+use std::{
+    path::Path,
+    sync::mpsc::{self, Sender},
+};
 
-pub fn watch(command_sender: Sender<Command>) {
-    let mut watcher = notify::recommended_watcher(move |response| match response {
-        // TEMP: unwrap
-        Ok(_notify_event) => command_sender.send(Command::Reload).unwrap(),
-        Err(message) => panic!("{message}"),
-    })
-    .expect("Expected file watching access.");
+pub fn file_watcher(cmd_sender: Sender<anyhow::Result<Command>>) {
+    let (file_change_sender, file_change_reciever) = mpsc::channel();
+    let found_watcher = RecommendedWatcher::new(file_change_sender, notify::Config::default());
+    match found_watcher {
+        Ok(mut watcher) => {
+            // TODO: specify file(s)
+            // NOTE: recursive mode irrelevant for single file watch.
+            if let Err(err) =
+                watcher.watch(Path::new("README.md"), notify::RecursiveMode::NonRecursive)
+            {
+                return cmd_sender.send(Err(anyhow!(err))).unwrap();
+            }
 
-    // NOTE: recursive mode irrelevant.
-    // TODO: specify file, check existence
-    watcher
-        .watch(Path::new("test.md"), notify::RecursiveMode::NonRecursive)
-        .expect("Watch access to FILE");
+            for response in file_change_reciever {
+                match response {
+                    // TEMP: unwrap
+                    Ok(_notify_event) => cmd_sender.send(Ok(Command::Reload)).unwrap(),
+                    Err(err) => cmd_sender.send(Err(anyhow!(err))).unwrap(),
+                }
+            }
+        }
+        Err(err) => {
+            cmd_sender.send(Err(anyhow!(err))).unwrap();
+        }
+    }
 }
