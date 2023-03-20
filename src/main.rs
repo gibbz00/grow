@@ -27,15 +27,25 @@ fn main() -> ExitCode {
 fn run_application() -> Result<()> {
     // parse args
     let args = args::Args::parse();
-    if args.file.is_dir() {
-        return Err(anyhow!("Expected file, found directory: {:?}", args.file));
+    for file in &args.files[..] {
+        if !file.is_file() {
+            return Err(anyhow!("Failed to locate file: {:?}", file));
+        }
     }
 
     let application = Application::open()?;
-    application.render_file(&args.file)?;
+    application.render_file(
+        args.files
+            .first()
+            .expect("ags parsing ensuring non-zero lenght."),
+    )?;
 
     let (cmd_sender, command_reciever) = mpsc::channel();
-    let thread_closures = thread_closures!(keyevent_loop, filewatcher(args.file.clone()));
+    // TEMP:
+    let thread_closures = thread_closures!(
+        keyevent_loop,
+        filewatcher(args.files.first().unwrap().clone())
+    );
     if let Err(error) = thread_helpers::spawn_threads(cmd_sender, thread_closures) {
         application.close()?;
         return Err(anyhow!(error));
@@ -48,7 +58,8 @@ fn run_application() -> Result<()> {
                     application.close()?;
                     break;
                 }
-                Command::Reload => application.render_file(&args.file)?,
+                // TEMP:
+                Command::Reload => application.render_file(args.files.first().unwrap())?,
             },
             Err(error) => {
                 application.close()?;
