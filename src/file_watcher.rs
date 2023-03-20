@@ -1,5 +1,8 @@
-use crate::{send_command, send_error_command, Command};
-use notify::{RecommendedWatcher, Watcher};
+use crate::{application::UpdateView, send_command, send_error_command, Command};
+use notify::{
+    event::{AccessKind, AccessMode, RemoveKind},
+    EventKind, RecommendedWatcher, Watcher,
+};
 use std::{
     path::PathBuf,
     sync::mpsc::{self, Sender},
@@ -22,16 +25,39 @@ pub fn filewatcher(file_paths: Vec<PathBuf>) -> impl FnOnce(Sender<anyhow::Resul
 
                 for response in file_change_reciever {
                     match response {
-                        Ok(notify_event) => send_command!(
-                            cmd_sender,
-                            Command::Reload(
-                                notify_event
-                                    .paths
-                                    .last()
-                                    .expect("Should always return at least one path.")
-                                    .clone()
-                            )
-                        ),
+                        Ok(notify_event) => match notify_event.kind {
+                            EventKind::Remove(RemoveKind::File) => {
+                                send_command!(
+                                    cmd_sender,
+                                    Command::Update(UpdateView::Remove(
+                                        notify_event
+                                            .paths
+                                            .last()
+                                            .expect("Should always return at least one path.")
+                                            .clone()
+                                    ))
+                                )
+                            }
+                            EventKind::Access(AccessKind::Close(AccessMode::Write)) => {
+                                send_command!(
+                                    cmd_sender,
+                                    Command::Update(UpdateView::Reload(
+                                        notify_event
+                                            .paths
+                                            .last()
+                                            .expect("Should always return at least one path.")
+                                            .clone()
+                                    ))
+                                )
+                            }
+                            _ => {
+                                // // TEMP:
+                                // send_command!(
+                                //     cmd_sender,
+                                //     Command::Debug(format!("{:#?}", notify_event))
+                                // )
+                            }
+                        },
                         Err(error) => return send_error_command!(cmd_sender, error),
                     }
                 }

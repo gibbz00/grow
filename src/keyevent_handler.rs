@@ -9,10 +9,10 @@ pub fn keyevent_loop(cmd_sender: Sender<anyhow::Result<Command>>) {
                 if let CrosstermEvent::Key(keyevent) = crossterm_event {
                     match (keyevent.modifiers, keyevent.code) {
                         (KeyModifiers::NONE, Char(ch)) if ch == '<' => {
-                            send_command!(cmd_sender, Command::PrevFile);
+                            send_command!(cmd_sender, Command::PrevView);
                         }
                         (KeyModifiers::NONE, Char(ch)) if ch == '>' => {
-                            send_command!(cmd_sender, Command::NextFile);
+                            send_command!(cmd_sender, Command::NextView);
                         }
                         (KeyModifiers::CONTROL, Char(ch)) if ch == 'c' => {
                             send_command!(cmd_sender, Command::Close);

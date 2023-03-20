@@ -10,52 +10,78 @@ use crossterm::{
 };
 use std::{fs, io, path::PathBuf};
 
+use crate::Command;
+
 pub struct ClosedApplication;
 impl ClosedApplication {
     pub fn open(file_paths: &[PathBuf]) -> Result<OpenedApplication> {
         enable_raw_mode()?;
         execute!(io::stdout(), EnterAlternateScreen, Hide)?;
         let application = OpenedApplication {
-            focused_file_idx: 0,
-            file_paths,
+            focused_view_idx: 0,
+            buffer_views: file_paths
+                .iter()
+                .map(|file_path| BufferView {
+                    absolute_file_path: fs::canonicalize(file_path)
+                        .expect("File path existence check done when parsing args."),
+                })
+                .collect(),
         };
         application.render_view()?;
         Ok(application)
     }
 }
 
-pub struct OpenedApplication<'a> {
-    focused_file_idx: usize,
-    file_paths: &'a [PathBuf],
+pub struct OpenedApplication {
+    focused_view_idx: usize,
+    buffer_views: Vec<BufferView>,
 }
 
-impl OpenedApplication<'_> {
-    pub fn next_file(&mut self) -> Result<()> {
-        if self.focused_file_idx != self.file_paths.len() - 1 {
-            self.focused_file_idx += 1;
+impl OpenedApplication {
+    // TEMP:
+    pub fn debug(&self, msg: String) -> Result<()> {
+        execute!(io::stdout(), Print(msg))?;
+        Ok(())
+    }
+
+    pub fn select_next_view(&mut self) -> Result<()> {
+        if self.focused_view_idx != self.buffer_views.len() - 1 {
+            self.focused_view_idx += 1;
         }
         self.render_view()?;
         Ok(())
     }
 
-    pub fn prev_file(&mut self) -> Result<()> {
-        self.focused_file_idx = self.focused_file_idx.saturating_sub(1);
+    pub fn select_prev_view(&mut self) -> Result<()> {
+        self.focused_view_idx = self.focused_view_idx.saturating_sub(1);
         self.render_view()?;
         Ok(())
     }
 
-    pub fn reload(&mut self, file_path_with_update: PathBuf) -> Result<()> {
-        self.focused_file_idx = self
-            .file_paths
-            .iter()
-            .position(|file_path| {
-                let absolute_path = fs::canonicalize(file_path)
-                    .expect("File path existence check done when parsing args.");
-                absolute_path == file_path_with_update
-            })
-            .expect("File path with update exists in application tabs.");
+    pub fn update_view(&mut self, update: UpdateView) -> Result<Option<Command>> {
+        match update {
+            UpdateView::Remove(file_path) => {
+                self.buffer_views.remove(self.get_view_index(file_path));
+                if self.buffer_views.is_empty() {
+                    return Ok(Some(Command::Close));
+                } else if self.focused_view_idx == self.buffer_views.len() {
+                    self.focused_view_idx = self.focused_view_idx.saturating_sub(1);
+                }
+            }
+            UpdateView::Reload(absolute_file_path) => {
+                self.focused_view_idx = self.get_view_index(absolute_file_path)
+            }
+        }
         self.render_view()?;
-        Ok(())
+        Ok(None)
+    }
+
+    /// Panics if path does not exist in buffer views
+    fn get_view_index(&self, absolute_file_path: PathBuf) -> usize {
+        self.buffer_views
+            .iter()
+            .position(|buffer_view| absolute_file_path == buffer_view.absolute_file_path)
+            .expect("File path with update exists in application tabs.")
     }
 
     fn render_view(&self) -> Result<()> {
@@ -64,7 +90,9 @@ impl OpenedApplication<'_> {
         execute!(
             io::stdout(),
             Print(fs::read_to_string(
-                self.file_paths[self.focused_file_idx].clone()
+                self.buffer_views[self.focused_view_idx]
+                    .absolute_file_path
+                    .clone()
             )?)
         )?;
         Ok(())
@@ -74,9 +102,19 @@ impl OpenedApplication<'_> {
         let mut stdout = io::stdout();
         stdout.execute(MoveTo(0, 0))?;
 
-        for file_path in self.file_paths {
-            let tab = format!(" {} ", file_path.to_string_lossy()).with(
-                if file_path == &self.file_paths[self.focused_file_idx] {
+        for buffer_view in &self.buffer_views {
+            let absolute_file_path = &buffer_view.absolute_file_path;
+            let tab = format!(
+                " {} ",
+                absolute_file_path
+                    .file_name()
+                    .expect("Path to be a valid file name")
+                    .to_string_lossy()
+            )
+            .with(
+                if *absolute_file_path
+                    == self.buffer_views[self.focused_view_idx].absolute_file_path
+                {
                     Color::White
                 } else {
                     Color::DarkGrey
@@ -94,4 +132,14 @@ impl OpenedApplication<'_> {
         execute!(io::stdout(), LeaveAlternateScreen, Show)?;
         Ok(ClosedApplication {})
     }
+}
+
+#[derive(Debug)]
+pub struct BufferView {
+    absolute_file_path: PathBuf,
+}
+
+pub enum UpdateView {
+    Remove(PathBuf),
+    Reload(PathBuf),
 }

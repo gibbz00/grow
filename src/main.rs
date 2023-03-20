@@ -10,7 +10,7 @@ use application::ClosedApplication;
 use clap::Parser;
 use file_watcher::filewatcher;
 use keyevent_handler::keyevent_loop;
-use std::{io::Write, path::PathBuf, process::ExitCode, sync::mpsc};
+use std::{io::Write, process::ExitCode, sync::mpsc};
 
 fn main() -> ExitCode {
     match run_application() {
@@ -35,7 +35,7 @@ fn run_application() -> Result<()> {
     let mut application = ClosedApplication::open(&args.files)?;
 
     let (cmd_sender, command_reciever) = mpsc::channel();
-    let thread_closures = thread_closures!(keyevent_loop, filewatcher(args.files.clone()));
+    let thread_closures = thread_closures!(keyevent_loop, filewatcher(args.files));
     if let Err(error) = thread_helpers::spawn_threads(cmd_sender, thread_closures) {
         application.close()?;
         return Err(anyhow!(error));
@@ -48,9 +48,19 @@ fn run_application() -> Result<()> {
                     application.close()?;
                     break;
                 }
-                Command::NextFile => application.next_file()?,
-                Command::PrevFile => application.prev_file()?,
-                Command::Reload(file_path) => application.reload(file_path)?,
+                Command::NextView => application.select_next_view()?,
+                Command::PrevView => application.select_prev_view()?,
+                Command::Update(update) => {
+                    let found_command_response = application.update_view(update)?;
+                    if let Some(Command::Close) = found_command_response {
+                        application.close()?;
+                        break;
+                    }
+                }
+                // TEMP:
+                Command::Debug(msg) => {
+                    application.debug(msg)?;
+                }
             },
             Err(error) => {
                 application.close()?;
@@ -66,7 +76,9 @@ fn run_application() -> Result<()> {
 
 pub enum Command {
     Close,
-    Reload(PathBuf),
-    NextFile,
-    PrevFile,
+    Update(application::UpdateView),
+    NextView,
+    PrevView,
+    // TEMP:
+    Debug(String),
 }
