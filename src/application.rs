@@ -72,7 +72,6 @@ impl OpenedApplication {
         Ok(None)
     }
 
-    /// Panics if path does not exist in buffer views
     fn get_view_index(&self, file_path: PathBuf) -> usize {
         self.file_paths
             .iter()
@@ -86,9 +85,15 @@ impl OpenedApplication {
         self.render_tabline()?;
         // let markdown_string = fs::read_to_string(Path::new("README.md")).unwrap();
         // execute!(stdout, Print(markdown_string))?;
-        stdout.queue(Print(fs::read_to_string(
-            self.file_paths[self.focused_view_idx].clone(),
-        )?))?;
+
+        // Skip is file can't be read, happens in rare cases when OS file
+        // removals haven't had time to propagate through the file_watcher.
+        let current_file_path = &self.file_paths[self.focused_view_idx];
+        if current_file_path.exists() {
+            stdout.queue(Print(fs::read_to_string(
+                self.file_paths[self.focused_view_idx].clone(),
+            )?))?;
+        }
 
         stdout.flush()?;
         Ok(())
