@@ -1,4 +1,4 @@
-use crate::{send_error_command, Command};
+use crate::{send_command, send_error_command, Command};
 use notify::{RecommendedWatcher, Watcher};
 use std::{
     path::PathBuf,
@@ -19,7 +19,7 @@ pub fn filewatcher(file_path: PathBuf) -> impl FnOnce(Sender<anyhow::Result<Comm
 
                 for response in file_change_reciever {
                     match response {
-                        Ok(_notify_event) => cmd_sender.send(Ok(Command::Reload)).unwrap(),
+                        Ok(_notify_event) => send_command!(cmd_sender, Command::Reload),
                         Err(error) => return send_error_command!(cmd_sender, error),
                     }
                 }

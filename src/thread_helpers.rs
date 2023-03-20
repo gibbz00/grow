@@ -1,4 +1,12 @@
 #[macro_export]
+macro_rules! send_command {
+    ($cmd_sender:expr, $command:expr) => {
+        // Unwrapping as thread error should not have to be dealt by users.
+        $cmd_sender.send(Ok($command)).unwrap()
+    };
+}
+
+#[macro_export]
 macro_rules! send_error_command {
     ($cmd_sender:expr, $error:expr) => {
         // Unwrapping as thread error should not have to be dealt by users.

@@ -33,8 +33,7 @@ fn run_application() -> Result<()> {
         }
     }
 
-    let application = ClosedApplication::open()?;
-    application.render_files(&args.files)?;
+    let mut application = ClosedApplication::open(&args.files)?;
 
     let (cmd_sender, command_reciever) = mpsc::channel();
     // TEMP:
@@ -54,8 +53,9 @@ fn run_application() -> Result<()> {
                     application.close()?;
                     break;
                 }
-                // TEMP:
-                Command::Reload => application.render_files(&args.files)?,
+                Command::NextFile => application.next_file()?,
+                Command::PrevFile => application.prev_file()?,
+                Command::Reload => application.reload()?,
             },
             Err(error) => {
                 application.close()?;
@@ -72,4 +72,6 @@ fn run_application() -> Result<()> {
 pub enum Command {
     Close,
     Reload,
+    NextFile,
+    PrevFile,
 }
