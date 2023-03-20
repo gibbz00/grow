@@ -5,9 +5,8 @@ mod file_watcher;
 mod keyevent_handler;
 mod thread_helpers;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use application::ClosedApplication;
-use clap::Parser;
 use file_watcher::filewatcher;
 use keyevent_handler::keyevent_loop;
 use std::{io::Write, process::ExitCode, sync::mpsc};
@@ -25,22 +24,13 @@ fn main() -> ExitCode {
 }
 
 fn run_application() -> Result<()> {
-    let args = args::Args::parse();
-    for file in &args.files[..] {
-        if !file.is_file() {
-            return Err(anyhow!("Failed to locate file: {:?}", file));
-        }
-    }
-
-    let mut application = ClosedApplication::open(&args.files)?;
-
+    let args = args::parse()?;
     let (cmd_sender, command_reciever) = mpsc::channel();
-    let thread_closures = thread_closures!(keyevent_loop, filewatcher(args.files));
-    if let Err(error) = thread_helpers::spawn_threads(cmd_sender, thread_closures) {
-        application.close()?;
-        return Err(anyhow!(error));
-    }
-
+    thread_helpers::spawn_threads(
+        cmd_sender,
+        thread_closures!(keyevent_loop, filewatcher(args.files.clone())),
+    )?;
+    let mut application = ClosedApplication::open(args.files)?;
     loop {
         match command_reciever.recv().unwrap() {
             Ok(command) => match command {

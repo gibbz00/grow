@@ -1,20 +1,4 @@
 #[macro_export]
-macro_rules! send_command {
-    ($cmd_sender:expr, $command:expr) => {
-        // Unwrapping as thread error should not have to be dealt by users.
-        $cmd_sender.send(Ok($command)).unwrap()
-    };
-}
-
-#[macro_export]
-macro_rules! send_error_command {
-    ($cmd_sender:expr, $error:expr) => {
-        // Unwrapping as thread error should not have to be dealt by users.
-        $cmd_sender.send(Err(::anyhow::anyhow!($error))).unwrap()
-    };
-}
-
-#[macro_export]
 macro_rules! thread_closures {
     ($($thread_closure:expr),*) => {
         {
@@ -26,8 +10,20 @@ macro_rules! thread_closures {
 
 use crate::Command;
 use anyhow::Result;
-pub use send_error_command;
 use std::{sync::mpsc::Sender, thread};
+
+pub fn send_command(cmd_sender: &Sender<Result<Command>>, command: Command) {
+    // Unwrapping as thread errors should not normally be handled by user.
+    (*cmd_sender).send(Ok(command)).unwrap();
+}
+
+pub fn send_error_command<E>(cmd_sender: &Sender<Result<Command>>, error: E)
+where
+    E: std::convert::Into<anyhow::Error>,
+{
+    // Unwrapping as thread errors should not normally be handled by user.
+    (*cmd_sender).send(Err(anyhow::anyhow!(error))).unwrap();
+}
 
 // NOTE: once trait aliases are introcuded.
 // trait CommandSender = FnOnce(Sender<Result<Command>>) + Send + 'static;
