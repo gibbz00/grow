@@ -48,10 +48,6 @@ fn run_application() -> Result<()> {
                         return Ok(());
                     }
                 }
-                // TEMP:
-                Command::Debug(msg) => {
-                    application.debug(msg)?;
-                }
             },
             Err(error) => {
                 application.close()?;
@@ -70,6 +66,4 @@ pub enum Command {
     Update(application::UpdateView),
     NextView,
     PrevView,
-    // TEMP:
-    Debug(String),
 }

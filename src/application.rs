@@ -32,13 +32,6 @@ pub struct OpenedApplication {
 }
 
 impl OpenedApplication {
-    // TEMP:
-    pub fn debug(&self, msg: String) -> Result<()> {
-        disable_raw_mode()?;
-        println!("{msg}");
-        Ok(())
-    }
-
     pub fn select_next_view(&mut self) -> Result<()> {
         if self.focused_view_idx != self.file_paths.len() - 1 {
             self.focused_view_idx += 1;
@@ -66,7 +59,6 @@ impl OpenedApplication {
                 }
             }
             UpdateView::Reload(file_paths) => {
-                // rather than first().unwrap()
                 for updated_path in file_paths {
                     self.focused_view_idx = self.get_view_index(updated_path)
                 }
