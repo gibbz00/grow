@@ -44,7 +44,7 @@ fn run_application() -> Result<()> {
                     let found_command_response = application.update_view(update)?;
                     if let Some(Command::Close) = found_command_response {
                         application.close()?;
-                        println!("All opened files have been removed. Closing application.");
+                        println!("All opened files have been (re)moved. Closing application.");
                         return Ok(());
                     }
                 }

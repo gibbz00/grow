@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::Result;
 use notify::{
-    event::{AccessKind, AccessMode, RemoveKind},
+    event::{AccessKind, AccessMode},
     EventKind, RecommendedWatcher, Watcher,
 };
 use std::{
@@ -28,7 +28,14 @@ pub fn filewatcher(file_paths: Vec<PathBuf>) -> impl FnOnce(Sender<Result<Comman
             loop {
                 let notify_event = file_change_reciever.recv()??;
                 match notify_event.kind {
-                    EventKind::Remove(RemoveKind::File) => {
+                    EventKind::Access(AccessKind::Close(AccessMode::Write)) => send_command(
+                        &cmd_sender,
+                        Command::Update(UpdateView::Reload(notify_event.paths)),
+                    ),
+                    _ => {
+                        // General case for removals and moves.
+                        // Tracking moved separately might be done by watching root folder.
+
                         // Multiple file deletions can occur between each notify remove event.
                         // We don't want to attempt to render files which don't exists.
                         // IMPROVEMENT: replace with drain filter once it becomes stable.
@@ -47,17 +54,6 @@ pub fn filewatcher(file_paths: Vec<PathBuf>) -> impl FnOnce(Sender<Result<Comman
                                 Command::Update(UpdateView::Remove(removed_files)),
                             )
                         }
-                    }
-                    EventKind::Access(AccessKind::Close(AccessMode::Write)) => send_command(
-                        &cmd_sender,
-                        Command::Update(UpdateView::Reload(notify_event.paths)),
-                    ),
-                    _ => {
-                        // TEMP:
-                        // send_command!(
-                        //     cmd_sender,
-                        //     Command::Debug(format!("gibbz: {:#?}", notify_event))
-                        // )
                     }
                 }
             }
