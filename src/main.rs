@@ -36,11 +36,7 @@ fn run_application() -> Result<()> {
     let mut application = ClosedApplication::open(&args.files)?;
 
     let (cmd_sender, command_reciever) = mpsc::channel();
-    // TEMP:
-    let thread_closures = thread_closures!(
-        keyevent_loop,
-        filewatcher(args.files.first().unwrap().clone())
-    );
+    let thread_closures = thread_closures!(keyevent_loop, filewatcher(args.files.clone()));
     if let Err(error) = thread_helpers::spawn_threads(cmd_sender, thread_closures) {
         application.close()?;
         return Err(anyhow!(error));
