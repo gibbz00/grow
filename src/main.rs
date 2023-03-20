@@ -55,8 +55,6 @@ fn run_application() -> Result<()> {
             }
         }
     }
-    // let markdown_string = fs::read_to_string(Path::new("README.md")).unwrap();
-    // execute!(stdout, Print(markdown_string))?;
 
     Ok(())
 }

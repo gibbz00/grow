@@ -6,9 +6,13 @@ use crossterm::{
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen,
     },
-    ExecutableCommand,
+    QueueableCommand,
 };
-use std::{fs, io, path::PathBuf};
+use std::{
+    fs,
+    io::{self, Write},
+    path::PathBuf,
+};
 
 use crate::Command;
 
@@ -77,21 +81,22 @@ impl OpenedApplication {
     }
 
     fn render_view(&self) -> Result<()> {
-        execute!(io::stdout(), Clear(crossterm::terminal::ClearType::All))?;
+        let mut stdout = io::stdout();
+        stdout.queue(Clear(crossterm::terminal::ClearType::All))?;
         self.render_tabline()?;
-        execute!(
-            io::stdout(),
-            Print(fs::read_to_string(
-                self.file_paths[self.focused_view_idx].clone()
-            )?)
-        )?;
+        // let markdown_string = fs::read_to_string(Path::new("README.md")).unwrap();
+        // execute!(stdout, Print(markdown_string))?;
+        stdout.queue(Print(fs::read_to_string(
+            self.file_paths[self.focused_view_idx].clone(),
+        )?))?;
+
+        stdout.flush()?;
         Ok(())
     }
 
     fn render_tabline(&self) -> Result<()> {
         let mut stdout = io::stdout();
-        stdout.execute(MoveTo(0, 0))?;
-
+        stdout.queue(MoveTo(0, 0))?;
         for file_path in &self.file_paths {
             let absolute_file_path = file_path;
             let tab = format!(
@@ -108,10 +113,10 @@ impl OpenedApplication {
                     Color::DarkGrey
                 },
             );
-            stdout.execute(PrintStyledContent(tab))?;
+            stdout.queue(PrintStyledContent(tab))?;
         }
-        stdout.execute(MoveToNextLine(1))?;
-
+        stdout.queue(MoveToNextLine(1))?;
+        stdout.flush()?;
         Ok(())
     }
 
