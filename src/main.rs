@@ -6,7 +6,7 @@ mod keyevent_handler;
 mod thread_helpers;
 
 use anyhow::{anyhow, Result};
-use application::Application;
+use application::ClosedApplication;
 use clap::Parser;
 use file_watcher::filewatcher;
 use keyevent_handler::keyevent_loop;
@@ -33,7 +33,7 @@ fn run_application() -> Result<()> {
         }
     }
 
-    let application = Application::open()?;
+    let application = ClosedApplication::open()?;
     application.render_files(&args.files)?;
 
     let (cmd_sender, command_reciever) = mpsc::channel();
