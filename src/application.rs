@@ -44,7 +44,16 @@ impl OpenedApplication<'_> {
         Ok(())
     }
 
-    pub fn reload(&self) -> Result<()> {
+    pub fn reload(&mut self, file_path_with_update: PathBuf) -> Result<()> {
+        self.focused_file_idx = self
+            .file_paths
+            .iter()
+            .position(|file_path| {
+                let absolute_path = fs::canonicalize(file_path)
+                    .expect("File path existence check done when parsing args.");
+                absolute_path == file_path_with_update
+            })
+            .expect("File path with update exists in application tabs.");
         self.render_view()?;
         Ok(())
     }

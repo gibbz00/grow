@@ -10,7 +10,7 @@ use application::ClosedApplication;
 use clap::Parser;
 use file_watcher::filewatcher;
 use keyevent_handler::keyevent_loop;
-use std::{io::Write, process::ExitCode, sync::mpsc};
+use std::{io::Write, path::PathBuf, process::ExitCode, sync::mpsc};
 
 fn main() -> ExitCode {
     match run_application() {
@@ -25,7 +25,6 @@ fn main() -> ExitCode {
 }
 
 fn run_application() -> Result<()> {
-    // parse args
     let args = args::Args::parse();
     for file in &args.files[..] {
         if !file.is_file() {
@@ -51,7 +50,7 @@ fn run_application() -> Result<()> {
                 }
                 Command::NextFile => application.next_file()?,
                 Command::PrevFile => application.prev_file()?,
-                Command::Reload => application.reload()?,
+                Command::Reload(file_path) => application.reload(file_path)?,
             },
             Err(error) => {
                 application.close()?;
@@ -67,7 +66,7 @@ fn run_application() -> Result<()> {
 
 pub enum Command {
     Close,
-    Reload,
+    Reload(PathBuf),
     NextFile,
     PrevFile,
 }

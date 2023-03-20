@@ -11,10 +11,9 @@ pub fn filewatcher(file_paths: Vec<PathBuf>) -> impl FnOnce(Sender<anyhow::Resul
         let found_watcher = RecommendedWatcher::new(file_change_sender, notify::Config::default());
         match found_watcher {
             Ok(mut watcher) => {
-                // TODO: specify file(s)
-                // NOTE: recursive mode irrelevant for single file watch.
                 for file_path in file_paths {
                     if let Err(error) =
+                        // NOTE: recursive mode irrelevant for single file watch.
                         watcher.watch(&file_path, notify::RecursiveMode::NonRecursive)
                     {
                         return send_error_command!(cmd_sender, error);
@@ -23,7 +22,16 @@ pub fn filewatcher(file_paths: Vec<PathBuf>) -> impl FnOnce(Sender<anyhow::Resul
 
                 for response in file_change_reciever {
                     match response {
-                        Ok(_notify_event) => send_command!(cmd_sender, Command::Reload),
+                        Ok(notify_event) => send_command!(
+                            cmd_sender,
+                            Command::Reload(
+                                notify_event
+                                    .paths
+                                    .last()
+                                    .expect("Should always return at least one path.")
+                                    .clone()
+                            )
+                        ),
                         Err(error) => return send_error_command!(cmd_sender, error),
                     }
                 }
