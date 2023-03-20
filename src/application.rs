@@ -6,11 +6,9 @@ use crossterm::{
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen,
     },
+    ExecutableCommand,
 };
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-};
+use std::{fs, io, path::PathBuf};
 
 pub struct Application<State> {
     state: std::marker::PhantomData<State>,
@@ -29,10 +27,14 @@ impl Application<Closed> {
 
 pub struct Opened;
 impl Application<Opened> {
-    pub fn render_file(&self, file_path: &PathBuf) -> Result<()> {
+    pub fn render_files(&self, file_paths: &[PathBuf]) -> Result<()> {
         execute!(io::stdout(), Clear(crossterm::terminal::ClearType::All))?;
-        render_tabline(file_path)?;
-        execute!(io::stdout(), Print(fs::read_to_string(file_path)?))?;
+        render_tabline(file_paths)?;
+        // TODO: render active file
+        execute!(
+            io::stdout(),
+            Print(fs::read_to_string(file_paths.first().unwrap())?)
+        )?;
         Ok(())
     }
 
@@ -45,12 +47,14 @@ impl Application<Opened> {
     }
 }
 
-pub fn render_tabline(file_path: &Path) -> Result<()> {
-    execute!(
-        io::stdout(),
-        MoveTo(0, 0),
-        Print(file_path.to_string_lossy()),
-        MoveToNextLine(1)
-    )?;
+pub fn render_tabline(file_paths: &[PathBuf]) -> Result<()> {
+    let mut stdout = io::stdout();
+    stdout.execute(MoveTo(0, 0))?;
+
+    for file_path in file_paths {
+        stdout.execute(Print(format!(" {} ", file_path.to_string_lossy())))?;
+    }
+    stdout.execute(MoveToNextLine(1))?;
+
     Ok(())
 }

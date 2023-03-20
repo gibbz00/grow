@@ -34,11 +34,7 @@ fn run_application() -> Result<()> {
     }
 
     let application = Application::open()?;
-    application.render_file(
-        args.files
-            .first()
-            .expect("ags parsing ensuring non-zero lenght."),
-    )?;
+    application.render_files(&args.files)?;
 
     let (cmd_sender, command_reciever) = mpsc::channel();
     // TEMP:
@@ -59,7 +55,7 @@ fn run_application() -> Result<()> {
                     break;
                 }
                 // TEMP:
-                Command::Reload => application.render_file(args.files.first().unwrap())?,
+                Command::Reload => application.render_files(&args.files)?,
             },
             Err(error) => {
                 application.close()?;
