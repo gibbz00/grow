@@ -8,8 +8,10 @@ edition = "2021"
 # TODO: See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+tui = { package = "ratatui" }
 crossterm = "^0.25"
 pulldown-cmark = { version = "^0.9.2", default-features = false}
 notify = "^5.1.0"
 anyhow = "^1.0.70"
 clap = { version = "^4.1.11", features = ["derive"]}
+unicode-segmentation = "^1.7.1"
