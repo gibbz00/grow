@@ -14,7 +14,7 @@ use tui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Span, Spans, Text},
-    widgets::{Paragraph, Widget},
+    widgets::{Paragraph, Widget, Wrap},
     Frame, Terminal,
 };
 
@@ -154,7 +154,9 @@ impl OpenedApplication {
         if curren_view.file_path.exists() {
             let file_string = fs::read_to_string(curren_view.file_path.clone())?;
             Ok(Some(
-                Paragraph::new(Text::raw(file_string)).scroll((curren_view.offset, 0)),
+                Paragraph::new(Text::raw(file_string))
+                    .scroll((curren_view.offset, 0))
+                    .wrap(Wrap { trim: true }),
             ))
         } else {
             Ok(None)
