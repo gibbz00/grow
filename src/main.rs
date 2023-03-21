@@ -48,6 +48,7 @@ fn run_application() -> Result<()> {
                         return Ok(());
                     }
                 }
+                Command::Scroll(steps) => application.scroll_current_buffer(steps)?,
             },
             Err(error) => {
                 application.close()?;
@@ -64,4 +65,5 @@ pub enum Command {
     Update(application::UpdateView),
     NextView,
     PrevView,
+    Scroll(i16),
 }

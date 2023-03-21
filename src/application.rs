@@ -29,7 +29,13 @@ impl ClosedApplication {
         let mut application = OpenedApplication {
             terminal: Terminal::new(CrosstermBackend::new(stdout))?,
             focused_view_idx: 0,
-            file_paths,
+            buffer_views: file_paths
+                .into_iter()
+                .map(|file_path| BufferView {
+                    file_path,
+                    offset: 0,
+                })
+                .collect(),
         };
         application.render_view()?;
         Ok(application)
@@ -39,7 +45,7 @@ impl ClosedApplication {
 pub struct OpenedApplication {
     terminal: Terminal<CrosstermBackend<Stdout>>,
     focused_view_idx: usize,
-    file_paths: Vec<PathBuf>,
+    buffer_views: Vec<BufferView>,
 }
 
 impl OpenedApplication {
@@ -50,7 +56,7 @@ impl OpenedApplication {
     }
 
     pub fn select_next_view(&mut self) -> Result<()> {
-        if self.focused_view_idx != self.file_paths.len() - 1 {
+        if self.focused_view_idx != self.buffer_views.len() - 1 {
             self.focused_view_idx += 1;
         }
         self.render_view()?;
@@ -63,14 +69,20 @@ impl OpenedApplication {
         Ok(())
     }
 
+    pub fn scroll_current_buffer(&mut self, steps: i16) -> Result<()> {
+        self.buffer_views[self.focused_view_idx].scroll(steps);
+        self.render_view()?;
+        Ok(())
+    }
+
     pub fn update_view(&mut self, update: UpdateView) -> Result<Option<Command>> {
         match update {
             UpdateView::Remove(file_paths) => {
                 for removed_path in file_paths {
-                    self.file_paths.remove(self.get_view_index(removed_path));
-                    if self.file_paths.is_empty() {
+                    self.buffer_views.remove(self.get_view_index(removed_path));
+                    if self.buffer_views.is_empty() {
                         return Ok(Some(Command::Close));
-                    } else if self.focused_view_idx == self.file_paths.len() {
+                    } else if self.focused_view_idx == self.buffer_views.len() {
                         self.focused_view_idx = self.focused_view_idx.saturating_sub(1);
                     }
                 }
@@ -86,9 +98,9 @@ impl OpenedApplication {
     }
 
     fn get_view_index(&self, file_path: PathBuf) -> usize {
-        self.file_paths
+        self.buffer_views
             .iter()
-            .position(|self_paths| file_path == *self_paths)
+            .position(|buffer_view| file_path == *buffer_view.file_path)
             .expect("File path with update exists in application tabs.")
     }
 
@@ -106,8 +118,8 @@ impl OpenedApplication {
     }
 
     fn tabline_widget(&mut self) -> impl Widget {
-        let mut tabs: Vec<Span> = Vec::with_capacity(self.file_paths.len());
-        for file_path in &self.file_paths {
+        let mut tabs: Vec<Span> = Vec::with_capacity(self.buffer_views.len());
+        for BufferView { file_path, .. } in &self.buffer_views {
             let absolute_file_path = file_path;
             let tab_name = format!(
                 " {} ",
@@ -116,7 +128,7 @@ impl OpenedApplication {
                     .expect("Path to be a valid file name")
                     .to_string_lossy()
             );
-            if *absolute_file_path == self.file_paths[self.focused_view_idx] {
+            if *absolute_file_path == self.buffer_views[self.focused_view_idx].file_path {
                 tabs.push(Span::raw(tab_name));
             } else {
                 tabs.push(Span::styled(tab_name, Style::default().fg(Color::DarkGray)))
@@ -130,12 +142,14 @@ impl OpenedApplication {
         // let markdown_string = fs::read_to_string(Path::new("README.md")).unwrap();
         // execute!(stdout, Print(markdown_string))?;
 
-        let current_file_path = &self.file_paths[self.focused_view_idx];
+        let curren_view = &self.buffer_views[self.focused_view_idx];
         // Skip if file can't be read, happens in rare cases when OS file
         // removals haven't had time to propagate through the file_watcher.
-        if current_file_path.exists() {
-            let file_string = fs::read_to_string(current_file_path.clone())?;
-            Ok(Some(Paragraph::new(Text::raw(file_string))))
+        if curren_view.file_path.exists() {
+            let file_string = fs::read_to_string(curren_view.file_path.clone())?;
+            Ok(Some(
+                Paragraph::new(Text::raw(file_string)).scroll((curren_view.offset, 0)),
+            ))
         } else {
             Ok(None)
         }
@@ -161,4 +175,15 @@ pub struct WidgetSizes {
 pub enum UpdateView {
     Remove(Vec<PathBuf>),
     Reload(Vec<PathBuf>),
+}
+
+pub struct BufferView {
+    file_path: PathBuf,
+    offset: u16,
+}
+
+impl BufferView {
+    pub fn scroll(&mut self, steps: i16) {
+        self.offset = self.offset.saturating_add_signed(steps);
+    }
 }

@@ -11,6 +11,12 @@ pub fn keyevent_loop(cmd_sender: Sender<anyhow::Result<Command>>) {
             Ok(crossterm_event) => {
                 if let CrosstermEvent::Key(keyevent) = crossterm_event {
                     match (keyevent.modifiers, keyevent.code) {
+                        (KeyModifiers::NONE, Char(ch)) if ch == 'd' => {
+                            send_command(&cmd_sender, Command::Scroll(1));
+                        }
+                        (KeyModifiers::NONE, Char(ch)) if ch == 'u' => {
+                            send_command(&cmd_sender, Command::Scroll(-1));
+                        }
                         (KeyModifiers::NONE, Char(ch)) if ch == '<' => {
                             send_command(&cmd_sender, Command::PrevView);
                         }
