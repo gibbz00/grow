@@ -148,14 +148,14 @@ impl OpenedApplication {
         // let markdown_string = fs::read_to_string(Path::new("README.md")).unwrap();
         // execute!(stdout, Print(markdown_string))?;
 
-        let curren_view = &self.buffer_views[self.focused_view_idx];
+        let current_view = &self.buffer_views[self.focused_view_idx];
         // Skip if file can't be read, happens in rare cases when OS file
         // removals haven't had time to propagate through the file_watcher.
-        if curren_view.file_path.exists() {
-            let file_string = fs::read_to_string(curren_view.file_path.clone())?;
+        if current_view.file_path.exists() {
+            let file_string = fs::read_to_string(current_view.file_path.clone())?;
             Ok(Some(
                 Paragraph::new(Text::raw(file_string))
-                    .scroll((curren_view.offset, 0))
+                    .scroll((current_view.offset, 0))
                     .wrap(Wrap { trim: true }),
             ))
         } else {
