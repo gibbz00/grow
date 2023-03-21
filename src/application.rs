@@ -75,6 +75,12 @@ impl OpenedApplication {
         Ok(())
     }
 
+    pub fn autoresize(&mut self) -> Result<()> {
+        self.terminal.autoresize()?;
+        self.render_view()?;
+        Ok(())
+    }
+
     pub fn update_view(&mut self, update: UpdateView) -> Result<Option<Command>> {
         match update {
             UpdateView::Remove(file_paths) => {

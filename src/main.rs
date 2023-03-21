@@ -2,14 +2,14 @@
 mod application;
 mod args;
 mod file_watcher;
-mod keyevent_handler;
+mod term_event_handler;
 mod thread_helpers;
 
 use anyhow::Result;
 use application::ClosedApplication;
 use file_watcher::filewatcher;
-use keyevent_handler::keyevent_loop;
 use std::{io::Write, process::ExitCode, sync::mpsc};
+use term_event_handler::event_loop;
 
 fn main() -> ExitCode {
     match run_application() {
@@ -28,7 +28,7 @@ fn run_application() -> Result<()> {
     let (cmd_sender, command_reciever) = mpsc::channel();
     thread_helpers::spawn_threads(
         cmd_sender,
-        thread_closures!(keyevent_loop, filewatcher(args.files.clone())),
+        thread_closures!(event_loop, filewatcher(args.files.clone())),
     )?;
     let mut application = ClosedApplication::open(args.files)?;
     loop {
@@ -40,6 +40,8 @@ fn run_application() -> Result<()> {
                 }
                 Command::NextView => application.select_next_view()?,
                 Command::PrevView => application.select_prev_view()?,
+                Command::Scroll(steps) => application.scroll_current_buffer(steps)?,
+                Command::AutoResize => application.autoresize()?,
                 Command::Update(update) => {
                     let found_command_response = application.update_view(update)?;
                     if let Some(Command::Close) = found_command_response {
@@ -48,7 +50,6 @@ fn run_application() -> Result<()> {
                         return Ok(());
                     }
                 }
-                Command::Scroll(steps) => application.scroll_current_buffer(steps)?,
             },
             Err(error) => {
                 application.close()?;
@@ -66,4 +67,5 @@ pub enum Command {
     NextView,
     PrevView,
     Scroll(i16),
+    AutoResize,
 }
