@@ -4,12 +4,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::{
-    fs,
-    io::{self, Stdout},
-    path::PathBuf,
-};
-use tui::{
+use ratatui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -17,8 +12,13 @@ use tui::{
     widgets::{Paragraph, Widget, Wrap},
     Frame, Terminal,
 };
+use std::{
+    fs,
+    io::{self, Stdout},
+    path::PathBuf,
+};
 
-use crate::Command;
+use crate::{markdown_renderer::render_markdown, Command};
 
 pub struct ClosedApplication;
 impl ClosedApplication {
@@ -112,7 +112,8 @@ impl OpenedApplication {
 
     fn render_view(&mut self) -> Result<()> {
         let tab_widget = self.tabline_widget();
-        let found_buffer_view_widget = self.buffer_view_widget()?;
+        let focused_buffer = &self.buffer_views[self.focused_view_idx];
+        let found_buffer_view_widget = Self::buffer_view_widget(focused_buffer)?;
         self.terminal.draw(|frame| {
             let widget_sizes = Self::get_ui_widget_sizes(frame);
             frame.render_widget(tab_widget, widget_sizes.tabline);
@@ -144,18 +145,16 @@ impl OpenedApplication {
         tabline
     }
 
-    fn buffer_view_widget(&mut self) -> Result<Option<impl Widget>> {
-        // let markdown_string = fs::read_to_string(Path::new("README.md")).unwrap();
-        // execute!(stdout, Print(markdown_string))?;
-
-        let current_view = &self.buffer_views[self.focused_view_idx];
+    fn buffer_view_widget(buffer_view: &BufferView) -> Result<Option<Paragraph>> {
         // Skip if file can't be read, happens in rare cases when OS file
         // removals haven't had time to propagate through the file_watcher.
-        if current_view.file_path.exists() {
-            let file_string = fs::read_to_string(current_view.file_path.clone())?;
+        if buffer_view.file_path.exists() {
+            let file_string = fs::read_to_string(buffer_view.file_path.clone())?;
+            // TODO: add render here:
+            let rendered_markdown = render_markdown(file_string);
             Ok(Some(
-                Paragraph::new(Text::raw(file_string))
-                    .scroll((current_view.offset, 0))
+                Paragraph::new(rendered_markdown)
+                    .scroll((buffer_view.offset, 0))
                     .wrap(Wrap { trim: true }),
             ))
         } else {

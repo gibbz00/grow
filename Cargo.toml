@@ -8,7 +8,8 @@ edition = "2021"
 # TODO: See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tui = { package = "ratatui" }
+# Using git verion for: https://github.com/tui-rs-revival/ratatui/pull/104
+ratatui = { git = "https://github.com/tui-rs-revival/ratatui.git" }
 crossterm = "^0.25"
 pulldown-cmark = { version = "^0.9.2", default-features = false}
 notify = "^5.1.0"

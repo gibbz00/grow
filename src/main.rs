@@ -1,7 +1,7 @@
-// mod render;
 mod application;
 mod args;
 mod file_watcher;
+mod markdown_renderer;
 mod term_event_handler;
 mod thread_helpers;
 
