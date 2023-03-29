@@ -5,9 +5,9 @@ use pulldown_cmark::{Event, Parser, Tag};
 use ratatui::{
     style::{Modifier, Style},
     text::{Span, Spans, Text},
+    widgets::{Paragraph, Widget, Wrap},
 };
-
-pub fn render_markdown<'a>(markdown_str: String) -> Text<'a> {
+pub fn parse_markdown_to_widgets<'a>(markdown_str: String) -> Vec<impl Widget + 'a> {
     let parser = Parser::new(&markdown_str);
     let mut lines: Vec<Spans> = Vec::new();
     let mut curr_style: Style = Style::default();
@@ -49,5 +49,6 @@ pub fn render_markdown<'a>(markdown_str: String) -> Text<'a> {
             _ => continue,
         }
     }
-    Text::from(lines)
+    // TODO: continually push widgets when parsing
+    vec![Paragraph::new(Text::from(lines)).wrap(Wrap { trim: true })]
 }

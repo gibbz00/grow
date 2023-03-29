@@ -454,7 +454,7 @@ dependencies = [
 [[package]]
 name = "ratatui"
 version = "0.20.1"
-source = "git+https://github.com/gibbz00/ratatui.git?branch=split_viewport#d92c530663877f98bae4c96bf35a47a94a00380d"
+source = "git+https://github.com/gibbz00/ratatui.git?branch=split_viewport#e2e0ec619b0f76d5182c14e2b39de13dc92dce92"
 dependencies = [
  "bitflags",
  "cassowary",

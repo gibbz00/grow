@@ -1,4 +1,4 @@
-use crate::markdown_renderer::render_markdown;
+use crate::markdown_renderer::parse_markdown_to_widgets;
 use ratatui::{
     style::{Modifier, Style},
     text::{Span, Spans, Text},
@@ -29,7 +29,7 @@ fn compare_style(enclosing_str: &str, style: Style) {
     let markdown_string = format!("{enclosing_str}{inner_str}{enclosing_str}");
     assert_eq!(
         Text::styled(inner_str, style),
-        render_markdown(markdown_string)
+        parse_markdown_to_widgets(markdown_string)
     )
 }
 
