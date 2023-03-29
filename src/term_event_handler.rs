@@ -1,4 +1,5 @@
 use crate::{
+    application::UpdateView,
     thread_helpers::{send_command, send_error_command},
     Command,
 };
@@ -10,7 +11,7 @@ pub fn event_loop(cmd_sender: Sender<anyhow::Result<Command>>) {
         match read() {
             Ok(crossterm_event) => match crossterm_event {
                 CrosstermEvent::Resize(_, _) => {
-                    send_command(&cmd_sender, Command::AutoResize);
+                    send_command(&cmd_sender, Command::Update(UpdateView::Resize));
                 }
                 CrosstermEvent::Key(keyevent) => match (keyevent.modifiers, keyevent.code) {
                     (KeyModifiers::NONE, Char(ch)) if ch == 'd' => {

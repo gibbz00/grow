@@ -41,7 +41,6 @@ fn run_application() -> Result<()> {
                 Command::NextView => application.select_next_view()?,
                 Command::PrevView => application.select_prev_view()?,
                 Command::Scroll(steps) => application.scroll_current_buffer(steps)?,
-                Command::AutoResize => application.autoresize()?,
                 Command::Update(update) => {
                     let found_command_response = application.update_view(update)?;
                     if let Some(Command::Close) = found_command_response {
@@ -67,5 +66,4 @@ pub enum Command {
     NextView,
     PrevView,
     Scroll(i16),
-    AutoResize,
 }
