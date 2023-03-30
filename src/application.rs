@@ -6,7 +6,7 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Span, Spans, Text},
     widgets::{Paragraph, Widget},
@@ -21,13 +21,13 @@ use strum::{EnumIter, IntoEnumIterator};
 
 use crate::{markdown_renderer::parse_markdown_to_widgets, Command};
 
+const TABLINE_HEIGHT: u16 = 1;
 pub struct ClosedApplication;
 impl ClosedApplication {
     pub fn open(file_paths: Vec<PathBuf>) -> Result<OpenedApplication> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen, Hide)?;
-        const TABLINE_HEIGHT: u16 = 1;
         let mut application = OpenedApplication {
             terminal: Terminal::new_split(
                 CrosstermBackend::new(stdout),
@@ -45,7 +45,7 @@ impl ClosedApplication {
         };
         // TEMP: until I figure out what buffer size I want.
         // just fo scroll testing purposes
-        application.terminal.resize_buffer_rel(0, 300);
+        application.terminal.resize_buffer_rel(0, 10);
         application.draw_all()?;
         Ok(application)
     }
@@ -139,18 +139,29 @@ impl OpenedApplication {
             ViewportIndex::Tabline => {
                 let tab_widget = self.tabline_widget();
                 self.terminal
-                    .render_widget_on_viewport(tab_widget, viewport_index as usize);
+                    .render_widget_on_viewport(&tab_widget, viewport_index as usize);
             }
             ViewportIndex::Markdown => {
                 let focused_buffer = &self.markdown_views[self.focused_view_idx];
                 // TEMP: only one widget right now
                 // TODO: handle multiple widgets with offset
                 let found_markdown_widgets = Self::generate_markdown_widgets(focused_buffer)?;
-                if let Some(mut markdown_widgets) = found_markdown_widgets {
-                    self.terminal.render_widget_on_viewport(
-                        markdown_widgets.swap_remove(0),
-                        viewport_index as usize,
-                    );
+                if let Some(markdown_widgets) = found_markdown_widgets {
+                    let terminal_buffer = self.terminal.get_buffer();
+                    let markdowm_view_buffer_region = Rect {
+                        x: 0,
+                        y: TABLINE_HEIGHT,
+                        width: terminal_buffer.get_width(),
+                        height: terminal_buffer.get_height() - TABLINE_HEIGHT,
+                    };
+                    let markdown_view_widget_slots = Layout::default()
+                        .constraints(vec![Constraint::Max(10); markdown_widgets.len()])
+                        .split(&markdowm_view_buffer_region);
+                    for (index, widget) in markdown_widgets.iter().enumerate() {
+                        // let widget = *widget;
+                        self.terminal
+                            .render_widget(widget.as_ref(), &markdown_view_widget_slots[index]);
+                    }
                 }
             }
         }
@@ -181,7 +192,9 @@ impl OpenedApplication {
     }
 
     // TODO: resize buffer based on widgets and render widgets on that buffer
-    fn generate_markdown_widgets(markdown_view: &MarkdownView) -> Result<Option<Vec<impl Widget>>> {
+    fn generate_markdown_widgets(
+        markdown_view: &MarkdownView,
+    ) -> Result<Option<Vec<Box<dyn Widget>>>> {
         // Skip if file can't be read, happens in rare cases when OS file
         // removals haven't had time to propagate through the file_watcher.
         if markdown_view.file_path.exists() {

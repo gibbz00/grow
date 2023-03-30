@@ -5,9 +5,10 @@ use pulldown_cmark::{Event, Parser, Tag};
 use ratatui::{
     style::{Modifier, Style},
     text::{Span, Spans, Text},
-    widgets::{Paragraph, Widget, Wrap},
+    widgets::{List, ListItem, Paragraph, Widget, Wrap},
 };
-pub fn parse_markdown_to_widgets<'a>(markdown_str: String) -> Vec<impl Widget + 'a> {
+
+pub fn parse_markdown_to_widgets(markdown_str: String) -> Vec<Box<dyn Widget>> {
     let parser = Parser::new(&markdown_str);
     let mut lines: Vec<Spans> = Vec::new();
     let mut curr_style: Style = Style::default();
@@ -50,5 +51,13 @@ pub fn parse_markdown_to_widgets<'a>(markdown_str: String) -> Vec<impl Widget + 
         }
     }
     // TODO: continually push widgets when parsing
-    vec![Paragraph::new(Text::from(lines)).wrap(Wrap { trim: true })]
+    // TEMP: list just to test multiple widget functionality
+    vec![
+        Box::new(Paragraph::new(Text::from(lines)).wrap(Wrap { trim: true })),
+        Box::new(List::new([
+            ListItem::new("Item 1"),
+            ListItem::new("Item 2"),
+            ListItem::new("Item 3"),
+        ])),
+    ]
 }
